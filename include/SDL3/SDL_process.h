@@ -69,6 +69,12 @@ typedef struct SDL_Process SDL_Process;
 typedef struct SDL_IPC SDL_IPC;
 
 /**
+ * A type representing a surface that can be shared
+ * via IPC.
+ */
+typedef struct SDL_SharedSurface SDL_SharedSurface;
+
+/**
  * Create a new process.
  *
  * The path to the executable is supplied in args[0]. args[1..N] are
@@ -461,6 +467,45 @@ extern SDL_DECLSPEC SDL_IPC * SDLCALL SDL_GetProcessIPC(SDL_Process *process);
  * was found.
  */
 extern SDL_DECLSPEC SDL_IPC * SDLCALL SDL_GetParentIPC(void);
+
+/**
+ * Sends the given SDL_SharedSurface on the given IPC.
+ *
+ * \returns True if the surface was sent successfully, false otherwise.
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface);
+
+/**
+ * Retrieves a shared surface from an IPC.
+ */
+extern SDL_DECLSPEC SDL_SharedSurface *SDL_GetSharedSurface(SDL_IPC *ipc);
+
+/**
+ * Locks an SDL_SharedSurface for reading.
+ *
+ * A read lock will return immediately if there are no write locks. A read lock
+ * will block if there is currently a write lock, or a write lock is pending.
+ *
+ * \param surface The surface to lock for reading.
+ *
+ * \returns An SDL_Surface for reading pixel data from, or NULL if there was
+ * an error locking the surface for reading.
+ */
+extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_ReadLockSharedSurface(SDL_SharedSurface *surface);
+
+/**
+ * Locks an SDL_SharedSurface for reading.
+ *
+ * This function always returns immediately.
+ *
+ * \param surface The surface to lock.
+ *
+ * \returns If a read lock was possible, this function returns an SDL_Surface. If a lock
+ * was not possible, this function returns NULL.
+ */
+extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_TryReadLockSharedSurface(SDL_SharedSurface *surface);
+extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_WriteLockSharedSurface(SDL_SharedSurface *surface);
+extern SDL_DECLSPEC void SDLCALL SDL_UnlockSharedSurface(SDL_SharedSurface *surface);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus
