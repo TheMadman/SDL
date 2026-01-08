@@ -468,6 +468,8 @@ extern SDL_DECLSPEC SDL_IPC * SDLCALL SDL_GetProcessIPC(SDL_Process *process);
  */
 extern SDL_DECLSPEC SDL_IPC * SDLCALL SDL_GetParentIPC(void);
 
+extern SDL_DECLSPEC SDL_SharedSurface * SDLCALL SDL_CreateSharedSurface(int width, int height, SDL_PixelFormat format);
+
 /**
  * Sends the given SDL_SharedSurface on the given IPC.
  *

@@ -36,9 +36,13 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <limits.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "../SDL_sysprocess.h"
 #include "../../io/SDL_iostream_c.h"
+#include "../../../include/SDL3/SDL_surface.h"
 
 
 #if defined(HAVE_POSIX_SPAWN_FILE_ACTIONS_ADDCHDIR_NP) && \
@@ -69,6 +73,44 @@ struct SDL_ProcessData {
     pid_t pid;
     SDL_IPC ipc;
 };
+
+struct SDL_SharedSurface {
+    SDL_Surface *surface;
+    int shared_memory_handle;
+};
+
+static int shm_open_anon(off_t length)
+{
+    // I'm surprised this isn't already POSIX...
+    // everyone kinda does their own thing, with
+    // BSDs having a special SHM_ANON arg for shm_open()
+    // and Linux having a separate memfd_create() function
+#define TEMPNAME_PREFIX "/sdl-shared-memory-"
+#define RANDOM_SUFFIX_SIZE 6
+    int random_suffix, fd;
+    char tempname[sizeof(TEMPNAME_PREFIX) + RANDOM_SUFFIX_SIZE + 1];
+
+    for (int i = 0; i < 100; i++) {
+        random_suffix = rand();
+        if (snprintf(tempname, sizeof(tempname), TEMPNAME_PREFIX "%*d", RANDOM_SUFFIX_SIZE, random_suffix) < 0)
+            return -1;
+
+        fd = shm_open(tempname, O_CREAT | O_EXCL, 0600);
+        const int error = fd < 0;
+        if (!error) {
+            shm_unlink(tempname);
+            if (ftruncate(fd, length) < 0) {
+                close(fd);
+                return -1;
+            }
+            return fd;
+        }
+    }
+    // give up
+    return -1;
+#undef TEMPNAME_PREFIX
+#undef RANDOM_SUFFIX_SIZE
+}
 
 static void CleanupStream(void *userdata, void *value)
 {
@@ -626,6 +668,64 @@ SDL_IPC * SDL_SYS_GetParentIPC(void)
 destroy_environment:
     SDL_DestroyEnvironment(env);
 return_null:
+    return NULL;
+}
+
+SDL_SharedSurface *SDL_SYS_CreateSharedSurface(int width, int height, SDL_PixelFormat format)
+{
+    bool SDL_CalculateSurfaceSize(SDL_PixelFormat format, int width, int height, size_t *size, size_t *pitch, bool minimalPitch);
+    size_t pitch, size;
+    SDL_SharedSurface *result;
+    void *pixels;
+
+    CHECK_PARAM(width < 0) {
+        SDL_InvalidParamError("width");
+        return NULL;
+    }
+
+    CHECK_PARAM(height < 0) {
+        SDL_InvalidParamError("height");
+        return NULL;
+    }
+
+    CHECK_PARAM(format == SDL_PIXELFORMAT_UNKNOWN) {
+        SDL_InvalidParamError("format");
+        return NULL;
+    }
+
+    if (SDL_CalculateSurfaceSize(format, width, height, &size, &pitch, false /* not minimal pitch */)) {
+        // overflow...
+        return NULL;
+    }
+
+    result = (SDL_SharedSurface *)SDL_malloc(sizeof(*result));
+    if (!result) {
+        return NULL;
+    }
+
+    result->shared_memory_handle = shm_open_anon((off_t)size);
+    if (result->shared_memory_handle < 0) {
+        goto error_shm_open_failed;
+    }
+
+    pixels = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, result->shared_memory_handle, 0);
+    if (pixels == NULL) {
+        goto error_mmap_failed;
+    }
+
+    result->surface = SDL_CreateSurfaceFrom(width, height, format, pixels, pitch);
+    if (result->surface == NULL) {
+        goto error_create_surface_failed;
+    }
+
+    return result;
+
+error_create_surface_failed:
+    munmap(pixels, size);
+error_mmap_failed:
+    close(result->shared_memory_handle);
+error_shm_open_failed:
+    SDL_free(result);
     return NULL;
 }
 

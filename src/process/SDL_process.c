@@ -212,3 +212,8 @@ SDL_IPC * SDL_GetParentIPC(void)
 {
     return SDL_SYS_GetParentIPC();
 }
+
+extern SDL_DECLSPEC SDL_SharedSurface *SDL_CreateSharedSurface(int width, int height, SDL_PixelFormat format)
+{
+    return SDL_SYS_CreateSharedSurface(width, height, format);
+}
