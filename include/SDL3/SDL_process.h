@@ -480,7 +480,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SendSharedSurface(SDL_IPC *ipc, SDL_SharedS
 /**
  * Retrieves a shared surface from an IPC.
  */
-extern SDL_DECLSPEC SDL_SharedSurface *SDL_GetSharedSurface(SDL_IPC *ipc);
+extern SDL_DECLSPEC SDL_SharedSurface SDLCALL *SDL_GetSharedSurface(SDL_IPC *ipc);
 
 /**
  * Locks an SDL_SharedSurface for reading.
