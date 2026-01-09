@@ -716,11 +716,13 @@ SDL_SharedSurface *SDL_SYS_CreateSharedSurface(int width, int height, SDL_PixelF
 
     result->shared_memory_handle = shm_open_anon((off_t)size);
     if (result->shared_memory_handle < 0) {
+        SDL_SetError("Unable to allocate shared memory");
         goto error_shm_open_failed;
     }
 
     pixels = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, result->shared_memory_handle, 0);
     if (pixels == NULL) {
+        SDL_SetError("Failed to memory map shared memory");
         goto error_mmap_failed;
     }
 
