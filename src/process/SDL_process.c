@@ -217,3 +217,8 @@ SDL_SharedSurface *SDL_CreateSharedSurface(int width, int height, SDL_PixelForma
 {
     return SDL_SYS_CreateSharedSurface(width, height, format);
 }
+
+bool SDL_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
+{
+    return SDL_SYS_SendSharedSurface(ipc, surface);
+}

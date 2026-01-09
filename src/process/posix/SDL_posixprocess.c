@@ -74,10 +74,21 @@ struct SDL_ProcessData {
     SDL_IPC ipc;
 };
 
+typedef struct SDL_SurfaceData {
+    int width;
+    int height;
+    SDL_PixelFormat format;
+} SDL_SurfaceData;
+
 struct SDL_SharedSurface {
     SDL_Surface *surface;
     int shared_memory_handle;
+    SDL_SurfaceData data;
 };
+
+typedef enum SDL_MESSAGETYPE {
+    SDL_SHAREDSURFACE,
+} SDL_MESSAGETYPE;
 
 static int shm_open_anon(off_t length)
 {
@@ -727,6 +738,58 @@ error_mmap_failed:
 error_shm_open_failed:
     SDL_free(result);
     return NULL;
+}
+
+bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
+{
+    static const SDL_MESSAGETYPE type = SDL_SHAREDSURFACE;
+    ssize_t sent;
+    struct msghdr msg;
+    struct cmsghdr *cmsg;
+
+    CHECK_PARAM(ipc) {
+        SDL_InvalidParamError("ipc");
+        return false;
+    }
+
+    CHECK_PARAM(surface) {
+        SDL_InvalidParamError("surface");
+        return false;
+    }
+
+    struct iovec data[] = {
+        {
+            .iov_base = (void*)&type,
+            .iov_len = sizeof(type),
+        },
+        {
+            .iov_base = &surface->data,
+            .iov_len = sizeof(surface->data),
+        },
+    };
+
+    // ripped straight from cmsg(3)
+    union {
+        char buf[CMSG_SPACE(sizeof(surface->shared_memory_handle))];
+        struct cmsghdr align;
+    } cmsgbuf;
+
+    msg = (struct msghdr) {
+        .msg_iov = data,
+        .msg_iovlen = SDL_arraysize(data),
+        .msg_control = cmsgbuf.buf,
+        .msg_controllen = sizeof(cmsgbuf.buf),
+    };
+
+    cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(surface->shared_memory_handle));
+    SDL_memcpy(CMSG_DATA(cmsg), &surface->shared_memory_handle, sizeof(surface->shared_memory_handle));
+
+    sent = sendmsg(ipc->socket, &msg, 0);
+    const ssize_t expected = data[0].iov_len + data[1].iov_len;
+    return sent == expected;
 }
 
 #endif // SDL_PROCESS_POSIX

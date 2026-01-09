@@ -41,5 +41,6 @@ void SDL_SYS_DestroyProcess(SDL_Process *process);
 SDL_IPC * SDL_SYS_GetProcessIPC(SDL_Process *process);
 SDL_IPC * SDL_SYS_GetParentIPC(void);
 SDL_SharedSurface *SDL_SYS_CreateSharedSurface(int width, int height, SDL_PixelFormat format);
+bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface);
 
 #endif // SDL_sysprocess_h_
