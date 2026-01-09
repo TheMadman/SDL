@@ -468,6 +468,20 @@ extern SDL_DECLSPEC SDL_IPC * SDLCALL SDL_GetProcessIPC(SDL_Process *process);
  */
 extern SDL_DECLSPEC SDL_IPC * SDLCALL SDL_GetParentIPC(void);
 
+/**
+ * Allocates a new SDL_SharedSurface, ready to be shared with other processes
+ * via an SDL_IPC.
+ *
+ * Takes the same parameters as SDL_CreateSurface().
+ *
+ * \param width the width of the surface.
+ * \param height the height of the surface.
+ * \param format the SDL_PixelFormat for the new surface's pixel format.
+ * \returns the new SDL_SharedSurface structure that is created or NULL on failure;
+ *          call SDL_GetError() for more information.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ */
 extern SDL_DECLSPEC SDL_SharedSurface * SDLCALL SDL_CreateSharedSurface(int width, int height, SDL_PixelFormat format);
 
 /**
@@ -477,39 +491,6 @@ extern SDL_DECLSPEC SDL_SharedSurface * SDLCALL SDL_CreateSharedSurface(int widt
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface);
 
-/**
- * Retrieves a shared surface from an IPC.
- */
-extern SDL_DECLSPEC SDL_SharedSurface SDLCALL *SDL_GetSharedSurface(SDL_IPC *ipc);
-
-/**
- * Locks an SDL_SharedSurface for reading.
- *
- * A read lock will return immediately if there are no write locks. A read lock
- * will block if there is currently a write lock, or a write lock is pending.
- *
- * \param surface The surface to lock for reading.
- *
- * \returns An SDL_Surface for reading pixel data from, or NULL if there was
- * an error locking the surface for reading.
- */
-extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_ReadLockSharedSurface(SDL_SharedSurface *surface);
-
-/**
- * Locks an SDL_SharedSurface for reading.
- *
- * This function always returns immediately.
- *
- * \param surface The surface to lock.
- *
- * \returns If a read lock was possible, this function returns an SDL_Surface. If a lock
- * was not possible, this function returns NULL.
- */
-extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_TryReadLockSharedSurface(SDL_SharedSurface *surface);
-extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_WriteLockSharedSurface(SDL_SharedSurface *surface);
-extern SDL_DECLSPEC void SDLCALL SDL_UnlockSharedSurface(SDL_SharedSurface *surface);
-
-/* Ends C function definitions when using C++ */
 #ifdef __cplusplus
 }
 #endif
