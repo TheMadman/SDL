@@ -42,7 +42,7 @@
 
 #include "../SDL_sysprocess.h"
 #include "../../io/SDL_iostream_c.h"
-#include "../../../include/SDL3/SDL_surface.h"
+#include "../../video/SDL_surface_c.h"
 
 
 #if defined(HAVE_POSIX_SPAWN_FILE_ACTIONS_ADDCHDIR_NP) && \
@@ -759,14 +759,20 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
         return false;
     }
 
+    struct SDL_SurfaceData surface_data = {
+        .width = surface->surface->w,
+        .height = surface->surface->h,
+        .format = surface->surface->format,
+    };
+
     struct iovec data[] = {
         {
             .iov_base = (void*)&type,
             .iov_len = sizeof(type),
         },
         {
-            .iov_base = &surface->data,
-            .iov_len = sizeof(surface->data),
+            .iov_base = &surface_data,
+            .iov_len = sizeof(surface_data),
         },
     };
 
