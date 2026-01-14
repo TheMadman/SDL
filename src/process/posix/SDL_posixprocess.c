@@ -740,6 +740,24 @@ error_shm_open_failed:
     return NULL;
 }
 
+void SDL_SYS_DestroySharedSurface(SDL_SharedSurface *surface)
+{
+    if (!surface)
+        return;
+
+    size_t size;
+
+    if (SDL_CalculateSurfaceSize(surface->surface->format, surface->surface->w, surface->surface->h, &size, NULL, false)) {
+        // How did we even get here?
+        // How do we even recover without leaking?
+    }
+
+    munmap(surface->surface->pixels, size);
+    SDL_DestroySurface(surface->surface);
+    close(surface->shared_memory_handle);
+    SDL_free(surface);
+}
+
 bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
 {
     static const SDL_MESSAGETYPE type = SDL_SHAREDSURFACE;

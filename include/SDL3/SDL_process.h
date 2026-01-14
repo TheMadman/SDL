@@ -485,6 +485,14 @@ extern SDL_DECLSPEC SDL_IPC * SDLCALL SDL_GetParentIPC(void);
 extern SDL_DECLSPEC SDL_SharedSurface * SDLCALL SDL_CreateSharedSurface(int width, int height, SDL_PixelFormat format);
 
 /**
+ * Frees all resources associated with an existing SDL_SharedSurface. It is safe
+ * to pass NULL to this function.
+ *
+ * \param surface the surface to free.
+ */
+extern SDL_DECLSPEC void SDLCALL SDL_DestroySharedSurface(SDL_SharedSurface *surface);
+
+/**
  * Sends the given SDL_SharedSurface on the given IPC.
  *
  * \returns True if the surface was sent successfully, false otherwise.
