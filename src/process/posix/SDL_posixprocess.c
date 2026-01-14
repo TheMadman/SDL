@@ -83,7 +83,6 @@ typedef struct SDL_SurfaceData {
 struct SDL_SharedSurface {
     SDL_Surface *surface;
     int shared_memory_handle;
-    SDL_SurfaceData data;
 };
 
 typedef enum SDL_MESSAGETYPE {
@@ -684,7 +683,6 @@ return_null:
 
 SDL_SharedSurface *SDL_SYS_CreateSharedSurface(int width, int height, SDL_PixelFormat format)
 {
-    bool SDL_CalculateSurfaceSize(SDL_PixelFormat format, int width, int height, size_t *size, size_t *pitch, bool minimalPitch);
     size_t pitch, size;
     SDL_SharedSurface *result;
     void *pixels;
