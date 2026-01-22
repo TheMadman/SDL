@@ -55,6 +55,17 @@ extern "C" {
 #endif
 
 /**
+ * Indicates the type of shared resource returned by a
+ * call to SDL_ReceiveSharedResource.
+ *
+ * \sa SDL_ReceiveSharedResource
+ */
+typedef enum SDL_SHARED_RESOURCE_TYPE {
+    SDL_SHARED_RESOURCE_ERROR,
+    SDL_SHARED_SURFACE,
+} SDL_SHARED_RESOURCE_TYPE;
+
+/**
  * An opaque handle representing a system process.
  *
  * \since This datatype is available since SDL 3.2.0.
@@ -73,6 +84,13 @@ typedef struct SDL_IPC SDL_IPC;
  * via IPC.
  */
 typedef struct SDL_SharedSurface SDL_SharedSurface;
+
+typedef struct SDL_SharedResource {
+    SDL_SHARED_RESOURCE_TYPE type;
+    union {
+        SDL_SharedSurface *surface;
+    };
+} SDL_SharedResource;
 
 /**
  * Create a new process.
@@ -467,6 +485,18 @@ extern SDL_DECLSPEC SDL_IPC * SDLCALL SDL_GetProcessIPC(SDL_Process *process);
  * was found.
  */
 extern SDL_DECLSPEC SDL_IPC * SDLCALL SDL_GetParentIPC(void);
+
+/**
+ * Blocks on the given SDL_IPC for a new shared resource to arrive.
+ *
+ * \param ipc The IPC to wait on the shared resource for.
+ * \returns The type of resource and a pointer to access the new resource,
+ * or a type of SDL_SHARED_RESOURCE_ERROR if there was an error retrieving
+ * the new resource.
+ */
+extern SDL_DECLSPEC SDL_SharedResource SDLCALL SDL_ReceiveSharedResource(
+    SDL_IPC *ipc
+);
 
 /**
  * Allocates a new SDL_SharedSurface, ready to be shared with other processes

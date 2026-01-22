@@ -85,10 +85,6 @@ struct SDL_SharedSurface {
     int shared_memory_handle;
 };
 
-typedef enum SDL_MESSAGETYPE {
-    SDL_SHAREDSURFACE,
-} SDL_MESSAGETYPE;
-
 static int shm_open_anon(off_t length)
 {
     // I'm surprised this isn't already POSIX...
@@ -681,11 +677,124 @@ return_null:
     return NULL;
 }
 
+static SDL_SharedSurface *SDL_SYS_CreateSharedSurfaceFrom(int shared_memory_fd, size_t size, size_t pitch, int width, int height, SDL_PixelFormat format)
+{
+    void *pixels;
+    SDL_SharedSurface *result = (SDL_SharedSurface *)SDL_malloc(sizeof(*result));
+    if (!result) {
+        return NULL;
+    }
+
+    pixels = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);
+    if (pixels == NULL) {
+        SDL_SetError("Failed to memory map shared memory");
+        goto error_mmap_failed;
+    }
+
+    result->surface = SDL_CreateSurfaceFrom(width, height, format, pixels, pitch);
+    if (result->surface == NULL) {
+        goto error_create_surface_failed;
+    }
+
+    return result;
+
+error_create_surface_failed:
+    munmap(pixels, size);
+error_mmap_failed:
+    close(shared_memory_fd);
+    return NULL;
+}
+
+static SDL_SharedResource SDL_SYS_ReceiveSharedSurface(SDL_IPC *ipc, struct msghdr hdr)
+{
+    static const SDL_SharedResource error = {
+        .type = SDL_SHARED_RESOURCE_ERROR,
+        .surface = NULL,
+    };
+
+    size_t size, pitch;
+    int shared_resource_fd = -1;
+    ssize_t amount_read = -1;
+    SDL_SharedSurface *result = NULL;
+    SDL_SurfaceData network_data = { 0 };
+    struct iovec vec = {
+        .iov_base = &network_data,
+        .iov_len = sizeof(network_data),
+    };
+    struct msghdr datahdr = {
+        .msg_iov = &vec,
+        .msg_iovlen = 1,
+        .msg_control = NULL,
+        .msg_controllen = 0,
+    };
+
+    struct cmsghdr *cmsg = CMSG_FIRSTHDR(&hdr);
+
+    // There should never be a reason this branch is taken
+    if (!(cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS))
+        return error;
+
+    memcpy(&shared_resource_fd, CMSG_DATA(cmsg), sizeof(shared_resource_fd));
+
+    amount_read = recvmsg(ipc->socket, &datahdr, 0);
+    if (amount_read < 0)
+        return error;
+
+    if (SDL_CalculateSurfaceSize(network_data.format, network_data.width, network_data.height, &size, &pitch, false)) {
+        // We should never really end up here
+        return error;
+    }
+    result = SDL_SYS_CreateSharedSurfaceFrom(shared_resource_fd, size, pitch, network_data.width, network_data.height, network_data.format);
+
+    if (result == NULL)
+        return error;
+
+    return (SDL_SharedResource) {
+        .type = SDL_SHARED_SURFACE,
+        .surface = result,
+    };
+}
+
+SDL_SharedResource SDL_SYS_ReceiveSharedResource(SDL_IPC *ipc)
+{
+    static const SDL_SharedResource error = {
+        .type = SDL_SHARED_RESOURCE_ERROR,
+        .surface = NULL,
+    };
+    union {
+        char buf[CMSG_SPACE(sizeof(int))];
+        struct cmsghdr align;
+    } cmsgbuf;
+    SDL_SHARED_RESOURCE_TYPE type = SDL_SHARED_RESOURCE_ERROR;
+    ssize_t amount_read = -1;
+    struct iovec vec = {
+        .iov_base = &type,
+        .iov_len = sizeof(type),
+    };
+    struct msghdr hdr = {
+        .msg_iov = &vec,
+        .msg_iovlen = 1,
+        .msg_control = &cmsgbuf.buf,
+        .msg_controllen = sizeof(cmsgbuf.buf),
+    };
+
+    amount_read = recvmsg(ipc->socket, &hdr, 0);
+
+    if (amount_read < 0)
+        return error;
+
+    switch (type) {
+        case SDL_SHARED_SURFACE:
+            return SDL_SYS_ReceiveSharedSurface(ipc, hdr);
+        default:
+            return error;
+    }
+}
+
 SDL_SharedSurface *SDL_SYS_CreateSharedSurface(int width, int height, SDL_PixelFormat format)
 {
     size_t pitch, size;
-    SDL_SharedSurface *result;
-    void *pixels;
+    int shared_memory_fd;
 
     CHECK_PARAM(width < 0) {
         SDL_InvalidParamError("width");
@@ -707,37 +816,13 @@ SDL_SharedSurface *SDL_SYS_CreateSharedSurface(int width, int height, SDL_PixelF
         return NULL;
     }
 
-    result = (SDL_SharedSurface *)SDL_malloc(sizeof(*result));
-    if (!result) {
+    shared_memory_fd = shm_open_anon((off_t)size);
+    if (shared_memory_fd < 0) {
+        SDL_SetError("Unable to allocate shared memory");
         return NULL;
     }
 
-    result->shared_memory_handle = shm_open_anon((off_t)size);
-    if (result->shared_memory_handle < 0) {
-        SDL_SetError("Unable to allocate shared memory");
-        goto error_shm_open_failed;
-    }
-
-    pixels = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, result->shared_memory_handle, 0);
-    if (pixels == NULL) {
-        SDL_SetError("Failed to memory map shared memory");
-        goto error_mmap_failed;
-    }
-
-    result->surface = SDL_CreateSurfaceFrom(width, height, format, pixels, pitch);
-    if (result->surface == NULL) {
-        goto error_create_surface_failed;
-    }
-
-    return result;
-
-error_create_surface_failed:
-    munmap(pixels, size);
-error_mmap_failed:
-    close(result->shared_memory_handle);
-error_shm_open_failed:
-    SDL_free(result);
-    return NULL;
+    return SDL_SYS_CreateSharedSurfaceFrom(shared_memory_fd, size, pitch, width, height, format);
 }
 
 void SDL_SYS_DestroySharedSurface(SDL_SharedSurface *surface)
@@ -760,7 +845,7 @@ void SDL_SYS_DestroySharedSurface(SDL_SharedSurface *surface)
 
 bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
 {
-    static const SDL_MESSAGETYPE type = SDL_SHAREDSURFACE;
+    static const SDL_SHARED_RESOURCE_TYPE type = SDL_SHARED_SURFACE;
     ssize_t sent;
     struct msghdr msg;
     struct cmsghdr *cmsg;
