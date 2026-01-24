@@ -54,4 +54,20 @@ SDL_IPC * SDL_SYS_GetParentIPC(void)
     return NULL;
 }
 
+SDL_SharedResource SDL_SYS_ReceiveSharedResource(SDL_IPC *ipc)
+{
+    return (SDL_SharedResource) {
+        .type = SDL_SHARED_RESOURCE_ERROR,
+    };
+}
+
+void SDL_SYS_DestroySharedSurface(SDL_SharedSurface *surface)
+{
+}
+
+bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
+{
+    return false;
+}
+
 #endif // SDL_PROCESS_DUMMY
