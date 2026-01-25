@@ -734,7 +734,7 @@ static SDL_SharedResource SDL_SYS_ReceiveSharedSurface(SDL_IPC *ipc, struct msgh
     if (!(cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS))
         return error;
 
-    memcpy(&shared_resource_fd, CMSG_DATA(cmsg), sizeof(shared_resource_fd));
+    SDL_memcpy(&shared_resource_fd, CMSG_DATA(cmsg), sizeof(shared_resource_fd));
 
     amount_read = recvmsg(ipc->socket, &datahdr, 0);
     if (amount_read < 0)
