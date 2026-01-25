@@ -525,6 +525,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_DestroySharedSurface(SDL_SharedSurface *sur
 /**
  * Sends the given SDL_SharedSurface on the given IPC.
  *
+ * \param ipc The SDL_IPC to send the shared surface across.
+ * \param surface The surface to send.
  * \returns True if the surface was sent successfully, false otherwise.
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface);

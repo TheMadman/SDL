@@ -1306,3 +1306,7 @@ SDL_DYNAPI_PROC(SDL_Surface*,SDL_LoadSurface_IO,(SDL_IOStream *a,bool b),(a,b),r
 SDL_DYNAPI_PROC(SDL_Surface*,SDL_LoadSurface,(const char *a),(a),return)
 SDL_DYNAPI_PROC(SDL_IPC*,SDL_GetProcessIPC,(SDL_Process *a),(a),return)
 SDL_DYNAPI_PROC(SDL_IPC*,SDL_GetParentIPC,(void),(),return)
+SDL_DYNAPI_PROC(SDL_SharedResource,SDL_ReceiveSharedResource,(SDL_IPC *a),(a),return)
+SDL_DYNAPI_PROC(SDL_SharedSurface*,SDL_CreateSharedSurface,(int a,int b,SDL_PixelFormat c),(a,b,c),return)
+SDL_DYNAPI_PROC(void,SDL_DestroySharedSurface,(SDL_SharedSurface *a),(a),)
+SDL_DYNAPI_PROC(bool,SDL_SendSharedSurface,(SDL_IPC *a,SDL_SharedSurface *b),(a,b),return)
