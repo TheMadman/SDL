@@ -61,6 +61,11 @@ SDL_SharedResource SDL_SYS_ReceiveSharedResource(SDL_IPC *ipc)
     };
 }
 
+SDL_SharedSurface *SDL_SYS_CreateSharedSurface(int width, int height, SDL_PixelFormat format)
+{
+    return NULL;
+}
+
 void SDL_SYS_DestroySharedSurface(SDL_SharedSurface *surface)
 {
 }
