@@ -44,5 +44,8 @@ SDL_SharedResource SDL_SYS_ReceiveSharedResource(SDL_IPC *ipc);
 SDL_SharedSurface *SDL_SYS_CreateSharedSurface(int width, int height, SDL_PixelFormat format);
 void SDL_SYS_DestroySharedSurface(SDL_SharedSurface *surface);
 bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface);
+SDL_Surface *SDL_SYS_WriteLockSharedSurface(SDL_SharedSurface *surface);
+SDL_Surface *SDL_SYS_ReadLockSharedSurface(SDL_SharedSurface *surface);
+void SDL_SYS_UnlockSharedSurface(SDL_SharedSurface *surface);
 
 #endif // SDL_sysprocess_h_

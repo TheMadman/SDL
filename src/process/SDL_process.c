@@ -232,3 +232,18 @@ bool SDL_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
 {
     return SDL_SYS_SendSharedSurface(ipc, surface);
 }
+
+SDL_Surface *SDL_WriteLockSharedSurface(SDL_SharedSurface *surface)
+{
+    return SDL_SYS_WriteLockSharedSurface(surface);
+}
+
+SDL_Surface *SDL_ReadLockSharedSurface(SDL_SharedSurface *surface)
+{
+    return SDL_SYS_ReadLockSharedSurface(surface);
+}
+
+void SDL_UnlockSharedSurface(SDL_SharedSurface *surface)
+{
+    return SDL_SYS_UnlockSharedSurface(surface);
+}

@@ -1302,3 +1302,6 @@
 #define SDL_CreateSharedSurface SDL_CreateSharedSurface_REAL
 #define SDL_DestroySharedSurface SDL_DestroySharedSurface_REAL
 #define SDL_SendSharedSurface SDL_SendSharedSurface_REAL
+#define SDL_WriteLockSharedSurface SDL_WriteLockSharedSurface_REAL
+#define SDL_ReadLockSharedSurface SDL_ReadLockSharedSurface_REAL
+#define SDL_UnlockSharedSurface SDL_UnlockSharedSurface_REAL

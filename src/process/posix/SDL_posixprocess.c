@@ -101,18 +101,22 @@ static int shm_open_anon(off_t length)
         if (snprintf(tempname, sizeof(tempname), TEMPNAME_PREFIX "%*d", RANDOM_SUFFIX_SIZE, random_suffix) < 0)
             return -1;
 
-        fd = shm_open(tempname, O_CREAT | O_EXCL, 0600);
+        fd = shm_open(tempname, O_RDWR | O_CREAT | O_EXCL, 0600);
         const int error = fd < 0;
-        if (!error) {
-            shm_unlink(tempname);
-            if (ftruncate(fd, length) < 0) {
-                close(fd);
-                return -1;
-            }
-            return fd;
+        if (error)
+            continue;
+
+        shm_unlink(tempname);
+
+        if (ftruncate(fd, length) < 0) {
+            SDL_SetError("Error resizing shared memory fd %d: %s", fd, strerror(errno));
+            close(fd);
+            return -1;
         }
+        return fd;
     }
     // give up
+    SDL_SetError("Error creating shared memory file descriptor: %s", strerror(errno));
     return -1;
 #undef TEMPNAME_PREFIX
 #undef RANDOM_SUFFIX_SIZE
@@ -162,9 +166,8 @@ static bool CreateSockets(int fds[2])
         return false;
     }
 
-    // Make sure the pipe isn't accidentally inherited by another thread creating a process
-    fcntl(fds[READ_END], F_SETFD, fcntl(fds[READ_END], F_GETFD) | FD_CLOEXEC);
-    fcntl(fds[WRITE_END], F_SETFD, fcntl(fds[WRITE_END], F_GETFD) | FD_CLOEXEC);
+    fcntl(fds[PARENT_END], F_SETFD, fcntl(fds[PARENT_END], F_GETFD) | FD_CLOEXEC);
+    fcntl(fds[CHILD_END], F_SETFD, fcntl(fds[CHILD_END], F_GETFD) | FD_CLOEXEC);
 
     return true;
 }
@@ -686,13 +689,14 @@ static SDL_SharedSurface *SDL_SYS_CreateSharedSurfaceFrom(int shared_memory_fd, 
     }
 
     pixels = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);
-    if (pixels == NULL) {
-        SDL_SetError("Failed to memory map shared memory");
+    if (pixels == MAP_FAILED) {
+        SDL_SetError("Failed to memory map shared memory: %s", strerror(errno));
         goto error_mmap_failed;
     }
 
     result->surface = SDL_CreateSurfaceFrom(width, height, format, pixels, pitch);
     if (result->surface == NULL) {
+        // SDL_CreateSurfaceFrom already does SDL_SetError()
         goto error_create_surface_failed;
     }
 
@@ -740,7 +744,7 @@ static SDL_SharedResource SDL_SYS_ReceiveSharedSurface(SDL_IPC *ipc, struct msgh
     if (amount_read < 0)
         return error;
 
-    if (SDL_CalculateSurfaceSize(network_data.format, network_data.width, network_data.height, &size, &pitch, false)) {
+    if (!SDL_CalculateSurfaceSize(network_data.format, network_data.width, network_data.height, &size, &pitch, false)) {
         // We should never really end up here
         return error;
     }
@@ -811,14 +815,13 @@ SDL_SharedSurface *SDL_SYS_CreateSharedSurface(int width, int height, SDL_PixelF
         return NULL;
     }
 
-    if (SDL_CalculateSurfaceSize(format, width, height, &size, &pitch, false /* not minimal pitch */)) {
+    if (!SDL_CalculateSurfaceSize(format, width, height, &size, &pitch, false /* not minimal pitch */)) {
         // overflow...
         return NULL;
     }
 
     shared_memory_fd = shm_open_anon((off_t)size);
     if (shared_memory_fd < 0) {
-        SDL_SetError("Unable to allocate shared memory");
         return NULL;
     }
 
@@ -832,7 +835,7 @@ void SDL_SYS_DestroySharedSurface(SDL_SharedSurface *surface)
 
     size_t size;
 
-    if (SDL_CalculateSurfaceSize(surface->surface->format, surface->surface->w, surface->surface->h, &size, NULL, false)) {
+    if (!SDL_CalculateSurfaceSize(surface->surface->format, surface->surface->w, surface->surface->h, &size, NULL, false)) {
         // How did we even get here?
         // How do we even recover without leaking?
     }
@@ -850,12 +853,12 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
     struct msghdr msg;
     struct cmsghdr *cmsg;
 
-    CHECK_PARAM(ipc) {
+    CHECK_PARAM(ipc == NULL) {
         SDL_InvalidParamError("ipc");
         return false;
     }
 
-    CHECK_PARAM(surface) {
+    CHECK_PARAM(surface == NULL) {
         SDL_InvalidParamError("surface");
         return false;
     }
@@ -899,6 +902,23 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
     sent = sendmsg(ipc->socket, &msg, 0);
     const ssize_t expected = data[0].iov_len + data[1].iov_len;
     return sent == expected;
+}
+
+SDL_Surface *SDL_SYS_WriteLockSharedSurface(SDL_SharedSurface *surface)
+{
+    // TODO implement this
+    return surface->surface;
+}
+
+SDL_Surface *SDL_SYS_ReadLockSharedSurface(SDL_SharedSurface *surface)
+{
+    // TODO implement this
+    return surface->surface;
+}
+
+void SDL_SYS_UnlockSharedSurface(SDL_SharedSurface *surface)
+{
+    // TODO implement this
 }
 
 #endif // SDL_PROCESS_POSIX
