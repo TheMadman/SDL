@@ -706,6 +706,7 @@ error_create_surface_failed:
     munmap(pixels, size);
 error_mmap_failed:
     close(shared_memory_fd);
+    SDL_free(result);
     return NULL;
 }
 
