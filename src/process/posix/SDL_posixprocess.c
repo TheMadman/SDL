@@ -82,7 +82,7 @@ typedef struct SDL_SurfaceData {
 
 struct SDL_SharedSurface {
     SDL_Surface *surface;
-    int shared_memory_handle;
+    int shared_memory_fd;
 };
 
 static int shm_open_anon(off_t length)
@@ -688,7 +688,9 @@ static SDL_SharedSurface *SDL_SYS_CreateSharedSurfaceFrom(int shared_memory_fd, 
         return NULL;
     }
 
-    pixels = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);
+    result->shared_memory_fd = shared_memory_fd;
+
+    pixels = mmap(NULL, size, PROT_READ, MAP_SHARED, shared_memory_fd, 0);
     if (pixels == MAP_FAILED) {
         SDL_SetError("Failed to memory map shared memory: %s", strerror(errno));
         goto error_mmap_failed;
@@ -843,7 +845,7 @@ void SDL_SYS_DestroySharedSurface(SDL_SharedSurface *surface)
 
     munmap(surface->surface->pixels, size);
     SDL_DestroySurface(surface->surface);
-    close(surface->shared_memory_handle);
+    close(surface->shared_memory_fd);
     SDL_free(surface);
 }
 
@@ -883,7 +885,7 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
 
     // ripped straight from cmsg(3)
     union {
-        char buf[CMSG_SPACE(sizeof(surface->shared_memory_handle))];
+        char buf[CMSG_SPACE(sizeof(surface->shared_memory_fd))];
         struct cmsghdr align;
     } cmsgbuf;
 
@@ -897,8 +899,8 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
     cmsg = CMSG_FIRSTHDR(&msg);
     cmsg->cmsg_level = SOL_SOCKET;
     cmsg->cmsg_type = SCM_RIGHTS;
-    cmsg->cmsg_len = CMSG_LEN(sizeof(surface->shared_memory_handle));
-    SDL_memcpy(CMSG_DATA(cmsg), &surface->shared_memory_handle, sizeof(surface->shared_memory_handle));
+    cmsg->cmsg_len = CMSG_LEN(sizeof(surface->shared_memory_fd));
+    SDL_memcpy(CMSG_DATA(cmsg), &surface->shared_memory_fd, sizeof(surface->shared_memory_fd));
 
     sent = sendmsg(ipc->socket, &msg, 0);
     const ssize_t expected = data[0].iov_len + data[1].iov_len;
