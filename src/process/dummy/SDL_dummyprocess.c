@@ -75,4 +75,9 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
     return false;
 }
 
+SDL_Surface *SDL_SYS_GetSurfaceFromSharedSurface(SDL_SharedSurface *surface)
+{
+    return NULL;
+}
+
 #endif // SDL_PROCESS_DUMMY

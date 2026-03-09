@@ -907,21 +907,9 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
     return sent == expected;
 }
 
-SDL_Surface *SDL_SYS_WriteLockSharedSurface(SDL_SharedSurface *surface)
+SDL_Surface *SDL_SYS_GetSurfaceFromSharedSurface(SDL_SharedSurface *surface)
 {
-    // TODO implement this
     return surface->surface;
-}
-
-SDL_Surface *SDL_SYS_ReadLockSharedSurface(SDL_SharedSurface *surface)
-{
-    // TODO implement this
-    return surface->surface;
-}
-
-void SDL_SYS_UnlockSharedSurface(SDL_SharedSurface *surface)
-{
-    // TODO implement this
 }
 
 #endif // SDL_PROCESS_POSIX

@@ -1276,9 +1276,7 @@ SDL3_0.0.0 {
     SDL_CreateSharedSurface;
     SDL_DestroySharedSurface;
     SDL_SendSharedSurface;
-    SDL_WriteLockSharedSurface;
-    SDL_ReadLockSharedSurface;
-    SDL_UnlockSharedSurface;
+    SDL_GetSurfaceFromSharedSurface;
     # extra symbols go here (don't modify this line)
   local: *;
 };

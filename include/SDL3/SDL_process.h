@@ -532,27 +532,13 @@ extern SDL_DECLSPEC void SDLCALL SDL_DestroySharedSurface(SDL_SharedSurface *sur
 extern SDL_DECLSPEC bool SDLCALL SDL_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface);
 
 /**
- * Locks an SDL_SharedSurface for writing.
+ * Provides unsynchronized access to the underlying SDL_Surface of an
+ * SDL_SharedSurface.
  *
- * \param shared_surface The SDL_SharedSurface to lock for writing.
- * \returns A pointer to the SDL_Surface for writing.
+ * \param surface The shared surface to return the SDL_Surface for.
+ * \returns A pointer to the SDL_Surface.
  */
-extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_WriteLockSharedSurface(SDL_SharedSurface *surface);
-
-/**
- * Locks an SDL_SharedSurface for reading.
- *
- * \param shared_surface The SDL_SharedSurface to lock for reading.
- * \returns A pointer to the SDL_Surface for reading.
- */
-extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_ReadLockSharedSurface(SDL_SharedSurface *surface);
-
-/**
- * Unlocks an SDL_SharedSurface that has been locked.
- *
- * \param The locked SDL_SharedSurface.
- */
-extern SDL_DECLSPEC void SDLCALL SDL_UnlockSharedSurface(SDL_SharedSurface *surface);
+extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_GetSurfaceFromSharedSurface(SDL_SharedSurface *surface);
 
 #ifdef __cplusplus
 }
