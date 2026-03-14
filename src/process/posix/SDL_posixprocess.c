@@ -79,10 +79,7 @@ typedef struct SDL_SurfaceData {
     int height;
     SDL_PixelFormat format;
     int has_palette;
-    struct {
-        int ncolors;
-        SDL_Color colors[];
-    } palette;
+    int ncolors;
 } SDL_SurfaceData;
 
 struct SDL_SharedSurface {
@@ -701,7 +698,7 @@ static SDL_SharedSurface *SDL_SYS_CreateSharedSurfaceFrom(int shared_memory_fd, 
         goto error_mmap_failed;
     }
 
-    result->surface = SDL_CreateSurfaceFrom(width, height, format, pixels, pitch);
+    result->surface = SDL_CreateSurfaceFrom(width, height, format, pixels, (int)pitch);
     if (result->surface == NULL) {
         // SDL_CreateSurfaceFrom already does SDL_SetError()
         goto error_create_surface_failed;
@@ -755,14 +752,14 @@ static SDL_SharedResource SDL_SYS_ReceiveSharedSurface(SDL_IPC *ipc, struct msgh
 
     if (network_data.has_palette) {
         // this is starting to get unwieldy
-        palette = SDL_CreatePalette(network_data.palette.ncolors);
+        palette = SDL_CreatePalette(network_data.ncolors);
         if (!palette)
             return error;
 
         amount_read = read(
             ipc->socket,
             palette->colors,
-            network_data.palette.ncolors * sizeof(*palette->colors)
+            (size_t)network_data.ncolors * sizeof(*palette->colors)
         );
         if (amount_read < 0) {
             SDL_DestroyPalette(palette);
@@ -909,9 +906,7 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
         .height = surface->surface->h,
         .format = surface->surface->format,
         .has_palette = !!palette,
-        .palette = {
-            .ncolors = palette ? palette->ncolors : 0
-        }
+        .ncolors = palette ? palette->ncolors : 0
     };
 
     struct iovec data[] = {
@@ -925,7 +920,7 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
         },
         {
             .iov_base = palette ? palette->colors : NULL,
-            .iov_len = palette ? palette->ncolors * sizeof(*palette->colors) : 0,
+            .iov_len = palette ? (size_t)palette->ncolors * sizeof(*palette->colors) : 0,
         },
     };
 
@@ -949,8 +944,8 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
     SDL_memcpy(CMSG_DATA(cmsg), &surface->shared_memory_fd, sizeof(surface->shared_memory_fd));
 
     sent = sendmsg(ipc->socket, &msg, 0);
-    const ssize_t expected = data[0].iov_len + data[1].iov_len + data[2].iov_len;
-    return sent == expected;
+    const size_t expected = data[0].iov_len + data[1].iov_len + data[2].iov_len;
+    return sent == (ssize_t)expected;
 }
 
 SDL_Surface *SDL_SYS_GetSurfaceFromSharedSurface(SDL_SharedSurface *surface)
