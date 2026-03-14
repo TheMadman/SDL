@@ -78,6 +78,11 @@ typedef struct SDL_SurfaceData {
     int width;
     int height;
     SDL_PixelFormat format;
+    int has_palette;
+    struct {
+        int ncolors;
+        SDL_Color colors[];
+    } palette;
 } SDL_SurfaceData;
 
 struct SDL_SharedSurface {
@@ -734,6 +739,7 @@ static SDL_SharedResource SDL_SYS_ReceiveSharedSurface(SDL_IPC *ipc, struct msgh
         .msg_control = NULL,
         .msg_controllen = 0,
     };
+    SDL_Palette *palette = NULL;
 
     struct cmsghdr *cmsg = CMSG_FIRSTHDR(&hdr);
 
@@ -747,14 +753,45 @@ static SDL_SharedResource SDL_SYS_ReceiveSharedSurface(SDL_IPC *ipc, struct msgh
     if (amount_read < 0)
         return error;
 
+    if (network_data.has_palette) {
+        // this is starting to get unwieldy
+        palette = SDL_CreatePalette(network_data.palette.ncolors);
+        if (!palette)
+            return error;
+
+        amount_read = read(
+            ipc->socket,
+            palette->colors,
+            network_data.palette.ncolors * sizeof(*palette->colors)
+        );
+        if (amount_read < 0) {
+            SDL_DestroyPalette(palette);
+            return error;
+        }
+    }
+
     if (!SDL_CalculateSurfaceSize(network_data.format, network_data.width, network_data.height, &size, &pitch, false)) {
         // We should never really end up here
+        SDL_DestroyPalette(palette);
         return error;
     }
     result = SDL_SYS_CreateSharedSurfaceFrom(shared_resource_fd, size, pitch, network_data.width, network_data.height, network_data.format);
 
-    if (result == NULL)
+    if (result == NULL) {
+        SDL_DestroyPalette(palette);
         return error;
+    }
+
+    if (palette) {
+        if (!SDL_SetSurfacePalette(result->surface, palette)) {
+            SDL_DestroyPalette(palette);
+            SDL_SYS_DestroySharedSurface(result);
+            return error;
+        }
+
+        // surface takes ownership of the palette
+        SDL_DestroyPalette(palette);
+    }
 
     return (SDL_SharedResource) {
         .type = SDL_SHARED_SURFACE,
@@ -855,6 +892,7 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
     ssize_t sent;
     struct msghdr msg;
     struct cmsghdr *cmsg;
+    SDL_Palette *palette = SDL_GetSurfacePalette(surface->surface);
 
     CHECK_PARAM(ipc == NULL) {
         SDL_InvalidParamError("ipc");
@@ -870,6 +908,10 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
         .width = surface->surface->w,
         .height = surface->surface->h,
         .format = surface->surface->format,
+        .has_palette = !!palette,
+        .palette = {
+            .ncolors = palette ? palette->ncolors : 0
+        }
     };
 
     struct iovec data[] = {
@@ -880,6 +922,10 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
         {
             .iov_base = &surface_data,
             .iov_len = sizeof(surface_data),
+        },
+        {
+            .iov_base = palette ? palette->colors : NULL,
+            .iov_len = palette ? palette->ncolors * sizeof(*palette->colors) : 0,
         },
     };
 
@@ -903,7 +949,7 @@ bool SDL_SYS_SendSharedSurface(SDL_IPC *ipc, SDL_SharedSurface *surface)
     SDL_memcpy(CMSG_DATA(cmsg), &surface->shared_memory_fd, sizeof(surface->shared_memory_fd));
 
     sent = sendmsg(ipc->socket, &msg, 0);
-    const ssize_t expected = data[0].iov_len + data[1].iov_len;
+    const ssize_t expected = data[0].iov_len + data[1].iov_len + data[2].iov_len;
     return sent == expected;
 }
 
