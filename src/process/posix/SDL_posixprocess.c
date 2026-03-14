@@ -690,7 +690,7 @@ static SDL_SharedSurface *SDL_SYS_CreateSharedSurfaceFrom(int shared_memory_fd, 
 
     result->shared_memory_fd = shared_memory_fd;
 
-    pixels = mmap(NULL, size, PROT_READ, MAP_SHARED, shared_memory_fd, 0);
+    pixels = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0);
     if (pixels == MAP_FAILED) {
         SDL_SetError("Failed to memory map shared memory: %s", strerror(errno));
         goto error_mmap_failed;
