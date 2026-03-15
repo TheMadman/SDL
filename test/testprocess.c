@@ -1137,7 +1137,7 @@ static int SDLCALL process_testIPC(void *arg)
         "--sdl-ipc",
         NULL,
     };
-    char *buffer;
+    char *buffer = NULL;
     size_t total_read;
     int exit_code;
 
@@ -1195,7 +1195,7 @@ static int SDLCALL process_testSharedSurface(void *arg)
         "--sdl-ipc-shared-surface",
         NULL,
     };
-    char *buffer;
+    char *buffer = NULL;
     size_t total_read;
     int exit_code;
     SDL_SharedResource resource = { 0 };
