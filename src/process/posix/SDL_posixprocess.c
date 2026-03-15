@@ -100,7 +100,7 @@ static int shm_open_anon(off_t length)
 
     for (int i = 0; i < 100; i++) {
         random_suffix = rand();
-        if (snprintf(tempname, sizeof(tempname), TEMPNAME_PREFIX "%*d", RANDOM_SUFFIX_SIZE, random_suffix) < 0)
+        if (SDL_snprintf(tempname, sizeof(tempname), TEMPNAME_PREFIX "%*d", RANDOM_SUFFIX_SIZE, random_suffix) < 0)
             return -1;
 
         fd = shm_open(tempname, O_RDWR | O_CREAT | O_EXCL, 0600);
@@ -660,7 +660,7 @@ SDL_IPC * SDL_SYS_GetParentIPC(void)
         }
 
         char *end = NULL;
-        long result = strtol(env_fd, &end, 10);
+        long result = SDL_strtol(env_fd, &end, 10);
 
         const bool error = end == NULL
             || end == env_fd
