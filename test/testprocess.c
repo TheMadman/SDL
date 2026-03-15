@@ -1181,6 +1181,7 @@ static int SDLCALL process_testIPC(void *arg)
 failed:
     SDL_DestroyProperties(props);
     SDL_DestroyProcess(process);
+    SDL_free(buffer);
     return TEST_ABORTED;
 }
 
@@ -1197,6 +1198,7 @@ static int SDLCALL process_testSharedSurface(void *arg)
     char *buffer;
     size_t total_read;
     int exit_code;
+    SDL_SharedResource resource = { 0 };
 
 #ifndef SDL_PLATFORM_UNIX
     SDLTest_AssertPass("SDL_IPC is currently only implemented for Posix");
@@ -1222,7 +1224,7 @@ static int SDLCALL process_testSharedSurface(void *arg)
     SDL_IPC *ipc = SDL_GetProcessIPC(process);
     SDLTest_AssertCheck(ipc != NULL, "SDL_GetProcessIPC()");
 
-    SDL_SharedResource resource = SDL_ReceiveSharedResource(ipc);
+    resource = SDL_ReceiveSharedResource(ipc);
     SDLTest_AssertCheck(resource.type == SDL_SHARED_SURFACE, "SDL_ReceiveSharedResource()");
 
     /* TODO: surface content/palette comparison? */
@@ -1235,14 +1237,17 @@ static int SDLCALL process_testSharedSurface(void *arg)
     SDLTest_AssertCheck(exit_code == 0, "Exit code should be 0, is %d", exit_code);
     SDLTest_AssertCheck(!!SDL_strstr(buffer, "SDL IPC opened successfully"), "Check \"SDL IPC opened successfully\" is printed");
 
+    SDL_DestroySharedSurface(resource.surface);
     SDL_DestroyProperties(props);
     SDL_DestroyProcess(process);
     SDL_free(buffer);
     return TEST_COMPLETED;
 
 failed:
+    SDL_DestroySharedSurface(resource.surface);
     SDL_DestroyProperties(props);
     SDL_DestroyProcess(process);
+    SDL_free(buffer);
     return TEST_ABORTED;
 }
 
